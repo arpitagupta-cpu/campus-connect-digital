@@ -109,12 +109,32 @@ export const messages = pgTable("messages", {
   read: boolean("read").notNull().default(false),
 });
 
+// Student IDs table for admin management
+export const studentEntries = pgTable("student_entries", {
+  id: serial("id").primaryKey(),
+  studentId: text("student_id").notNull().unique(),
+  section: text("section"),
+  department: text("department"),
+  year: integer("year"),
+  semester: text("semester"),
+  assigned: boolean("assigned").notNull().default(false),
+  userId: integer("user_id"),
+});
+
 // Define all relations
 export const usersRelations = relations(users, ({ many }) => ({
   submissions: many(submissions),
   todos: many(todos),
   sentMessages: many(messages, { relationName: "sender" }),
-  receivedMessages: many(messages, { relationName: "receiver" }),
+  receivedMessages: many(messages, { relationName: "receiver" })
+}));
+
+export const studentEntriesRelations = relations(studentEntries, ({ one }) => ({
+  user: one(users, {
+    fields: [studentEntries.userId],
+    references: [users.id],
+    relationName: "user"
+  }),
 }));
 
 export const assignmentsRelations = relations(assignments, ({ many }) => ({
@@ -162,6 +182,7 @@ export const insertScheduleSchema = createInsertSchema(schedule).omit({ id: true
 export const insertTodoSchema = createInsertSchema(todos).omit({ id: true });
 export const insertEventSchema = createInsertSchema(events).omit({ id: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true });
+export const insertStudentEntrySchema = createInsertSchema(studentEntries).omit({ id: true, assigned: true, userId: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -190,3 +211,6 @@ export type InsertEvent = z.infer<typeof insertEventSchema>;
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+export type StudentEntry = typeof studentEntries.$inferSelect;
+export type InsertStudentEntry = z.infer<typeof insertStudentEntrySchema>;

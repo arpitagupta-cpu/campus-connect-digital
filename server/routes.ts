@@ -10,6 +10,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
   
   // API routes
+  
+  // Admin-only: Manage Student IDs
+  app.get("/api/admin/students", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as Express.User;
+    
+    if (user.userType !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    try {
+      const students = await storage.getAllStudents();
+      res.json(students);
+    } catch (err) {
+      res.status(500).json({ message: "Error fetching students" });
+    }
+  });
+  
+  app.post("/api/admin/student-ids", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as Express.User;
+    
+    if (user.userType !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    // Validate request body
+    const schema = z.object({
+      studentId: z.string().min(1, "Student ID is required"),
+      section: z.string().optional(),
+      department: z.string().optional(),
+      year: z.number().optional(),
+      semester: z.string().optional()
+    });
+    
+    try {
+      const validData = schema.parse(req.body);
+      const result = await storage.createStudentEntry(validData);
+      res.status(201).json(result);
+    } catch (err) {
+      res.status(400).json({ message: "Invalid student data", error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+  
+  app.put("/api/admin/student-ids/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as Express.User;
+    
+    if (user.userType !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    const studentId = req.params.id;
+    
+    try {
+      const updatedData = await storage.updateStudentEntry(studentId, req.body);
+      if (!updatedData) {
+        return res.status(404).json({ message: "Student ID not found" });
+      }
+      res.json(updatedData);
+    } catch (err) {
+      res.status(400).json({ message: "Invalid student data" });
+    }
+  });
   // Assignments
   app.get("/api/assignments", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
