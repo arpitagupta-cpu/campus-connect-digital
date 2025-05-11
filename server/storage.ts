@@ -1,13 +1,19 @@
 import { 
   User, InsertUser, Assignment, InsertAssignment, Resource, InsertResource,
   Notice, InsertNotice, Schedule, InsertSchedule, Todo, InsertTodo,
-  Event, InsertEvent, Message, InsertMessage, Submission, InsertSubmission
+  Event, InsertEvent, Message, InsertMessage, Submission, InsertSubmission,
+  users, assignments, submissions, resources, notices, schedule, 
+  todos, events, messages
 } from "@shared/schema";
 import { createId } from '@paralleldrive/cuid2';
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq, and, desc, or } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 // Storage interface
 export interface IStorage {
@@ -59,7 +65,231 @@ export interface IStorage {
   markAsRead(id: number): Promise<Message | undefined>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any to avoid type issues with session.SessionStore
+}
+
+export class DatabaseStorage implements IStorage {
+  sessionStore: any; // Using any to avoid type issues
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  // Assignment methods
+  async getAssignments(): Promise<Assignment[]> {
+    return await db.select().from(assignments).orderBy(desc(assignments.postedDate));
+  }
+
+  async getAssignmentById(id: number): Promise<Assignment | undefined> {
+    const [assignment] = await db.select().from(assignments).where(eq(assignments.id, id));
+    return assignment;
+  }
+
+  async createAssignment(assignment: InsertAssignment): Promise<Assignment> {
+    const [newAssignment] = await db.insert(assignments).values(assignment).returning();
+    return newAssignment;
+  }
+
+  async updateAssignment(id: number, assignment: Partial<Assignment>): Promise<Assignment | undefined> {
+    const [updatedAssignment] = await db
+      .update(assignments)
+      .set(assignment)
+      .where(eq(assignments.id, id))
+      .returning();
+    return updatedAssignment;
+  }
+
+  async deleteAssignment(id: number): Promise<boolean> {
+    const result = await db.delete(assignments).where(eq(assignments.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Submission methods
+  async getSubmissions(assignmentId?: number, studentId?: number): Promise<Submission[]> {
+    if (assignmentId && studentId) {
+      return await db
+        .select()
+        .from(submissions)
+        .where(
+          and(
+            eq(submissions.assignmentId, assignmentId),
+            eq(submissions.studentId, studentId)
+          )
+        );
+    } else if (assignmentId) {
+      return await db
+        .select()
+        .from(submissions)
+        .where(eq(submissions.assignmentId, assignmentId));
+    } else if (studentId) {
+      return await db
+        .select()
+        .from(submissions)
+        .where(eq(submissions.studentId, studentId));
+    } else {
+      return await db.select().from(submissions);
+    }
+  }
+
+  async createSubmission(submission: InsertSubmission): Promise<Submission> {
+    const [newSubmission] = await db.insert(submissions).values(submission).returning();
+    return newSubmission;
+  }
+
+  // Resource methods
+  async getResources(category?: string): Promise<Resource[]> {
+    if (category) {
+      return await db
+        .select()
+        .from(resources)
+        .where(eq(resources.category, category))
+        .orderBy(desc(resources.uploadDate));
+    } else {
+      return await db.select().from(resources).orderBy(desc(resources.uploadDate));
+    }
+  }
+
+  async getResourceById(id: number): Promise<Resource | undefined> {
+    const [resource] = await db.select().from(resources).where(eq(resources.id, id));
+    return resource;
+  }
+
+  async createResource(resource: InsertResource): Promise<Resource> {
+    const [newResource] = await db.insert(resources).values(resource).returning();
+    return newResource;
+  }
+
+  async deleteResource(id: number): Promise<boolean> {
+    const result = await db.delete(resources).where(eq(resources.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Notice methods
+  async getNotices(): Promise<Notice[]> {
+    return await db.select().from(notices).orderBy(desc(notices.postedDate));
+  }
+
+  async getNoticeById(id: number): Promise<Notice | undefined> {
+    const [notice] = await db.select().from(notices).where(eq(notices.id, id));
+    return notice;
+  }
+
+  async createNotice(notice: InsertNotice): Promise<Notice> {
+    const [newNotice] = await db.insert(notices).values(notice).returning();
+    return newNotice;
+  }
+
+  // Schedule methods
+  async getSchedule(day?: string): Promise<Schedule[]> {
+    if (day) {
+      return await db
+        .select()
+        .from(schedule)
+        .where(eq(schedule.day, day))
+        .orderBy(schedule.startTime);
+    } else {
+      return await db.select().from(schedule).orderBy(schedule.day, schedule.startTime);
+    }
+  }
+
+  async createScheduleItem(scheduleItem: InsertSchedule): Promise<Schedule> {
+    const [newScheduleItem] = await db.insert(schedule).values(scheduleItem).returning();
+    return newScheduleItem;
+  }
+
+  async updateScheduleItem(id: number, scheduleItem: Partial<Schedule>): Promise<Schedule | undefined> {
+    const [updatedScheduleItem] = await db
+      .update(schedule)
+      .set(scheduleItem)
+      .where(eq(schedule.id, id))
+      .returning();
+    return updatedScheduleItem;
+  }
+
+  // Todo methods
+  async getTodos(userId: number): Promise<Todo[]> {
+    return await db
+      .select()
+      .from(todos)
+      .where(eq(todos.userId, userId))
+      .orderBy(todos.createdAt);
+  }
+
+  async createTodo(todo: InsertTodo): Promise<Todo> {
+    const [newTodo] = await db.insert(todos).values(todo).returning();
+    return newTodo;
+  }
+
+  async updateTodo(id: number, completed: boolean): Promise<Todo | undefined> {
+    const [updatedTodo] = await db
+      .update(todos)
+      .set({ completed })
+      .where(eq(todos.id, id))
+      .returning();
+    return updatedTodo;
+  }
+
+  async deleteTodo(id: number): Promise<boolean> {
+    const result = await db.delete(todos).where(eq(todos.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Event methods
+  async getEvents(): Promise<Event[]> {
+    return await db.select().from(events).orderBy(events.date);
+  }
+
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const [newEvent] = await db.insert(events).values(event).returning();
+    return newEvent;
+  }
+
+  // Message methods
+  async getMessages(userId: number): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        or(
+          eq(messages.senderId, userId),
+          eq(messages.receiverId, userId)
+        )
+      )
+      .orderBy(messages.timestamp);
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db.insert(messages).values(message).returning();
+    return newMessage;
+  }
+
+  async markAsRead(id: number): Promise<Message | undefined> {
+    const [updatedMessage] = await db
+      .update(messages)
+      .set({ read: true })
+      .where(eq(messages.id, id))
+      .returning();
+    return updatedMessage;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -73,7 +303,7 @@ export class MemStorage implements IStorage {
   private events: Map<number, Event>;
   private messages: Map<number, Message>;
   
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any to avoid type issues
   
   private userIdCounter: number = 1;
   private assignmentIdCounter: number = 1;
@@ -417,4 +647,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
