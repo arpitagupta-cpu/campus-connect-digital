@@ -67,11 +67,34 @@ export function setupAuth(app: Express) {
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
+      
+      // Check if registering as a student
+      if (req.body.userType === "student") {
+        // Verify student ID exists in the system and is not already assigned
+        const studentId = req.body.studentId;
+        if (!studentId) {
+          return res.status(400).json({ message: "Student ID is required" });
+        }
+        
+        const studentEntry = await storage.getStudentById(studentId);
+        if (!studentEntry) {
+          return res.status(400).json({ message: "Invalid student ID. Please contact the administrator." });
+        }
+        
+        if (studentEntry.assigned) {
+          return res.status(400).json({ message: "This student ID is already assigned to another user" });
+        }
+      }
 
       const user = await storage.createUser({
         ...req.body,
         password: await hashPassword(req.body.password),
       });
+
+      // If registering as a student, mark the student ID as assigned
+      if (req.body.userType === "student" && req.body.studentId) {
+        await storage.assignStudentToUser(req.body.studentId, user.id);
+      }
 
       // Remove password from response
       const { password, ...userWithoutPassword } = user;

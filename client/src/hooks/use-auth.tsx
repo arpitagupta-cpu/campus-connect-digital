@@ -34,7 +34,7 @@ export const registerStudentSchema = z.object({
   confirmPassword: z.string().min(1, "Please confirm your password"),
   fullName: z.string().min(1, "Full name is required"),
   userType: z.string().default("student"),
-  studentId: z.string().optional(),
+  studentId: z.string().min(1, "Student ID is required"),
   section: z.string().optional(),
   department: z.string().optional(),
   year: z.number().optional(),

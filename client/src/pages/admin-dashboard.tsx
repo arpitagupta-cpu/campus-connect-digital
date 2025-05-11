@@ -2,6 +2,7 @@ import MainLayout from "@/components/layout/main-layout";
 import { UploadContent } from "@/components/admin/upload-content";
 import { RecentActivities } from "@/components/admin/recent-activities";
 import { AnalyticsOverview } from "@/components/admin/analytics-overview";
+import { StudentManagement } from "@/components/admin/student-management";
 import { Card, CardContent } from "@/components/ui/card";
 import { BarChart3, Users, FileText, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -104,6 +105,11 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         ))}
+      </div>
+      
+      {/* Student Management */}
+      <div className="mt-6">
+        <StudentManagement />
       </div>
       
       {/* Admin Action Cards */}
