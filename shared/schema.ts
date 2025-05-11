@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, date, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -17,6 +18,8 @@ export const users = pgTable("users", {
   semester: text("semester"),
   cgpa: text("cgpa"),
 });
+
+// Relations will be defined after all tables have been declared
 
 // Assignments
 export const assignments = pgTable("assignments", {
@@ -105,6 +108,49 @@ export const messages = pgTable("messages", {
   timestamp: timestamp("timestamp").notNull(),
   read: boolean("read").notNull().default(false),
 });
+
+// Define all relations
+export const usersRelations = relations(users, ({ many }) => ({
+  submissions: many(submissions),
+  todos: many(todos),
+  sentMessages: many(messages, { relationName: "sender" }),
+  receivedMessages: many(messages, { relationName: "receiver" }),
+}));
+
+export const assignmentsRelations = relations(assignments, ({ many }) => ({
+  submissions: many(submissions),
+}));
+
+export const submissionsRelations = relations(submissions, ({ one }) => ({
+  assignment: one(assignments, {
+    fields: [submissions.assignmentId],
+    references: [assignments.id],
+  }),
+  student: one(users, {
+    fields: [submissions.studentId],
+    references: [users.id],
+  }),
+}));
+
+export const todosRelations = relations(todos, ({ one }) => ({
+  user: one(users, {
+    fields: [todos.userId],
+    references: [users.id],
+  }),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+    relationName: "sender",
+  }),
+  receiver: one(users, {
+    fields: [messages.receiverId],
+    references: [users.id],
+    relationName: "receiver",
+  }),
+}));
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
