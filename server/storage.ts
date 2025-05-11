@@ -2,8 +2,9 @@ import {
   User, InsertUser, Assignment, InsertAssignment, Resource, InsertResource,
   Notice, InsertNotice, Schedule, InsertSchedule, Todo, InsertTodo,
   Event, InsertEvent, Message, InsertMessage, Submission, InsertSubmission,
+  StudentEntry, InsertStudentEntry,
   users, assignments, submissions, resources, notices, schedule, 
-  todos, events, messages
+  todos, events, messages, studentEntries
 } from "@shared/schema";
 import { createId } from '@paralleldrive/cuid2';
 import session from "express-session";
@@ -63,6 +64,13 @@ export interface IStorage {
   getMessages(userId: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   markAsRead(id: number): Promise<Message | undefined>;
+  
+  // Student Entry methods
+  getAllStudents(): Promise<StudentEntry[]>;
+  getStudentById(studentId: string): Promise<StudentEntry | undefined>;
+  createStudentEntry(entry: InsertStudentEntry): Promise<StudentEntry>;
+  updateStudentEntry(studentId: string, data: Partial<StudentEntry>): Promise<StudentEntry | undefined>;
+  assignStudentToUser(studentId: string, userId: number): Promise<StudentEntry | undefined>;
   
   // Session store
   sessionStore: any; // Using any to avoid type issues with session.SessionStore
