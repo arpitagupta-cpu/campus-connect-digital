@@ -95,6 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Remove confirmPassword as it's not needed in the API
       const { confirmPassword, ...userData } = credentials;
       const res = await apiRequest("POST", "/api/register", userData);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Registration failed. Please contact an administrator.");
+      }
+      
       return await res.json();
     },
     onSuccess: (user: SafeUser) => {

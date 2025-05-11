@@ -41,7 +41,7 @@ export function StudentManagement() {
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   
   // Query to fetch all student entries
-  const { data: students, isLoading, isError } = useQuery({
+  const { data: students, isLoading, isError } = useQuery<StudentEntry[]>({
     queryKey: ["/api/admin/students"],
     queryFn: getQueryFn({ on401: "throw" }),
   });
@@ -237,7 +237,7 @@ export function StudentManagement() {
             </TableHeader>
             <TableBody>
               {students && students.length > 0 ? (
-                students.map((student: StudentEntry) => (
+                students.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell className="font-medium">{student.studentId}</TableCell>
                     <TableCell>{student.department || "-"}</TableCell>

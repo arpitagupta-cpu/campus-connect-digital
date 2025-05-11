@@ -11,6 +11,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -206,6 +207,9 @@ export function AuthForm() {
                               <FormControl>
                                 <Input placeholder="Enter your student ID" {...field} />
                               </FormControl>
+                              <FormDescription className="text-xs">
+                                Enter the student ID assigned by your administrator
+                              </FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
