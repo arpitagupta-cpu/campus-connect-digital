@@ -298,6 +298,44 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedMessage;
   }
+  
+  // Student Entry methods
+  async getAllStudents(): Promise<StudentEntry[]> {
+    return await db.select().from(studentEntries).orderBy(studentEntries.studentId);
+  }
+  
+  async getStudentById(studentId: string): Promise<StudentEntry | undefined> {
+    const [entry] = await db.select().from(studentEntries).where(eq(studentEntries.studentId, studentId));
+    return entry;
+  }
+  
+  async createStudentEntry(entry: InsertStudentEntry): Promise<StudentEntry> {
+    const [newEntry] = await db.insert(studentEntries).values(entry).returning();
+    return newEntry;
+  }
+  
+  async updateStudentEntry(studentId: string, data: Partial<StudentEntry>): Promise<StudentEntry | undefined> {
+    // Remove id to prevent accidental updates
+    const { id, ...updateData } = data as any;
+    
+    const [updated] = await db
+      .update(studentEntries)
+      .set(updateData)
+      .where(eq(studentEntries.studentId, studentId))
+      .returning();
+    
+    return updated;
+  }
+  
+  async assignStudentToUser(studentId: string, userId: number): Promise<StudentEntry | undefined> {
+    const [updated] = await db
+      .update(studentEntries)
+      .set({ assigned: true, userId })
+      .where(eq(studentEntries.studentId, studentId))
+      .returning();
+    
+    return updated;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -310,6 +348,7 @@ export class MemStorage implements IStorage {
   private todos: Map<number, Todo>;
   private events: Map<number, Event>;
   private messages: Map<number, Message>;
+  private studentEntries: Map<number, StudentEntry>;
   
   sessionStore: any; // Using any to avoid type issues
   
@@ -322,6 +361,7 @@ export class MemStorage implements IStorage {
   private todoIdCounter: number = 1;
   private eventIdCounter: number = 1;
   private messageIdCounter: number = 1;
+  private studentEntryIdCounter: number = 1;
   
   constructor() {
     this.users = new Map();
@@ -333,6 +373,7 @@ export class MemStorage implements IStorage {
     this.todos = new Map();
     this.events = new Map();
     this.messages = new Map();
+    this.studentEntries = new Map();
     
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // prune expired entries every 24h
@@ -652,6 +693,45 @@ export class MemStorage implements IStorage {
     const updatedMessage = { ...existingMessage, read: true };
     this.messages.set(id, updatedMessage);
     return updatedMessage;
+  }
+  
+  // Student Entry methods
+  async getAllStudents(): Promise<StudentEntry[]> {
+    return Array.from(this.studentEntries.values()).sort((a, b) => a.studentId.localeCompare(b.studentId));
+  }
+  
+  async getStudentById(studentId: string): Promise<StudentEntry | undefined> {
+    return Array.from(this.studentEntries.values()).find(entry => entry.studentId === studentId);
+  }
+  
+  async createStudentEntry(entry: InsertStudentEntry): Promise<StudentEntry> {
+    const id = this.studentEntryIdCounter++;
+    const newEntry: StudentEntry = { 
+      ...entry, 
+      id, 
+      assigned: false,
+      userId: null
+    };
+    this.studentEntries.set(id, newEntry);
+    return newEntry;
+  }
+  
+  async updateStudentEntry(studentId: string, data: Partial<StudentEntry>): Promise<StudentEntry | undefined> {
+    const entry = await this.getStudentById(studentId);
+    if (!entry) return undefined;
+    
+    const updatedEntry = { ...entry, ...data };
+    this.studentEntries.set(entry.id, updatedEntry);
+    return updatedEntry;
+  }
+  
+  async assignStudentToUser(studentId: string, userId: number): Promise<StudentEntry | undefined> {
+    const entry = await this.getStudentById(studentId);
+    if (!entry) return undefined;
+    
+    const updatedEntry = { ...entry, assigned: true, userId };
+    this.studentEntries.set(entry.id, updatedEntry);
+    return updatedEntry;
   }
 }
 
