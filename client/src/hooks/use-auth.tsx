@@ -22,13 +22,13 @@ type AuthContextType = {
 };
 
 // We need to be more restrictive for login
-const loginSchema = z.object({
+export const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
 // We need full user data for registration
-const registerStudentSchema = z.object({
+export const registerStudentSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
@@ -45,7 +45,7 @@ const registerStudentSchema = z.object({
   path: ["confirmPassword"]
 });
 
-const registerAdminSchema = z.object({
+export const registerAdminSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
@@ -157,4 +157,4 @@ export function useAuth() {
   return context;
 }
 
-export { loginSchema, registerStudentSchema, registerAdminSchema };
+// These schemas are already exported above
